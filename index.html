@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Куда тебя несёт? Политический компас</title>
+<meta name="description" content="Политический тест на 30 вопросов. Компас меняется в реальном времени после каждого ответа.">
+<meta name="theme-color" content="#EAEEF1">
+<meta property="og:title" content="Куда тебя несёт? Политический компас">
+<meta property="og:description" content="30 вопросов, 4 квадрата, точка двигается после каждого ответа.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23E5484D'/%3E%3Crect x='16' width='16' height='16' fill='%233E63DD'/%3E%3Crect y='16' width='16' height='16' fill='%232FA36B'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23F2B01E'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EAEEF1; --ink:#151B36; --paper:#FFFFFF; --muted:#566079;
+  --red:#E5484D; --blue:#3E63DD; --green:#2FA36B; --yellow:#F2B01E;
+  --display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --text:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{font-family:var(--text);color:var(--ink);background:var(--bg);line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+
+.app{
+  max-width:1120px;margin:0 auto;
+  min-height:100vh;min-height:100dvh;
+  padding:clamp(20px,4vw,56px);
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);
+  gap:clamp(28px,5vw,72px);align-items:center;
+}
+.panel{min-width:0}
+.compass-wrap{position:sticky;top:16px;min-width:0}
+
+/* ---------- компас ---------- */
+#compass{display:block;width:100%;height:auto;overflow:visible}
+.q{fill-opacity:.34;transition:fill-opacity .35s}
+.q.on{fill-opacity:.92}
+.qlabel{font:800 12.5px var(--text);fill:var(--ink);opacity:.7;pointer-events:none;transition:opacity .35s}
+.qlabel.on{opacity:1}
+.ql-tl.on,.ql-tr.on{fill:#fff}
+.axlabel{font:800 15px var(--text);fill:var(--ink)}
+.gridline{stroke:#fff;stroke-opacity:.7;stroke-width:1}
+.axis-line{stroke:var(--ink);stroke-width:2}
+.frame{fill:none;stroke:var(--ink);stroke-width:4}
+#trail{fill:none;stroke:var(--ink);stroke-width:2;stroke-dasharray:3 5;stroke-linecap:round;stroke-linejoin:round;opacity:.65}
+.step{fill:var(--ink);opacity:.5}
+.halo{fill:var(--ink);opacity:.14;transform-box:fill-box;transform-origin:center;animation:pulse 2s ease-in-out infinite}
+.core{fill:var(--ink);stroke:#fff;stroke-width:3}
+.ping{fill:none;stroke:var(--ink);stroke-width:3;opacity:0;transform-box:fill-box;transform-origin:center}
+.ping.go{animation:ping .7s ease-out}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+@keyframes ping{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(4)}}
+
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.ro{border:3px solid var(--ink);background:var(--paper);padding:8px 12px}
+.ro span{display:block;font-size:13px;font-weight:600;color:var(--muted)}
+.ro b{font:800 24px var(--text);font-variant-numeric:tabular-nums}
+.ro em{font-style:normal;font-size:13px;font-weight:600;margin-left:8px;color:var(--muted)}
+
+/* ---------- экраны ---------- */
+.screen{display:none}
+.screen.active{display:block}
+
+h1{font:900 clamp(40px,6.2vw,68px)/1.02 var(--display);letter-spacing:-.02em;margin-bottom:24px;overflow-wrap:break-word}
+.lead{font-size:clamp(18px,2vw,21px);max-width:30em;margin-bottom:14px}
+.note{color:var(--muted);max-width:30em;margin-bottom:32px}
+
+.cta{display:inline-block;font:700 18px var(--text);background:var(--ink);color:#fff;border:3px solid var(--ink);padding:16px 28px;cursor:pointer;box-shadow:6px 6px 0 var(--yellow);transition:transform .1s,box-shadow .1s}
+@media (hover:hover){.cta:hover{transform:translate(3px,3px);box-shadow:3px 3px 0 var(--yellow)}}
+.cta:active{transform:translate(6px,6px);box-shadow:0 0 0 var(--yellow)}
+.ghost{font:700 17px var(--text);background:var(--paper);border:3px solid var(--ink);padding:14px 22px;cursor:pointer}
+@media (hover:hover){.ghost:hover{background:var(--ink);color:#fff}}
+.cta:focus-visible,.ghost:focus-visible,.back:focus-visible,.answer:focus-visible{outline:4px solid var(--blue);outline-offset:3px}
+
+/* ---------- вопросы ---------- */
+.progress{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.bar{flex:1;height:14px;border:3px solid var(--ink);background:var(--paper)}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .3s}
+#count{font:700 14px var(--display);white-space:nowrap}
+.question{font:800 clamp(22px,2.7vw,30px)/1.22 var(--text);letter-spacing:-.01em;max-width:24em;min-height:6em;margin-bottom:22px}
+.question.swap{animation:qin .22s ease-out}
+@keyframes qin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.answers{display:grid;gap:8px}
+.answer{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;font:600 17px/1.2 var(--text);background:var(--paper);border:3px solid var(--ink);padding:13px 16px;cursor:pointer;transition:transform .08s,background .08s,color .08s}
+@media (hover:hover){.answer:hover{background:var(--ink);color:#fff}}
+.answer:active{transform:translate(2px,2px)}
+.answer kbd{font:700 13px var(--text);border:2px solid currentColor;min-width:24px;height:24px;display:grid;place-items:center;flex:none}
+@media (hover:none){.answer kbd{display:none}}
+.back{margin-top:18px;background:none;border:0;font:600 16px var(--text);text-decoration:underline;text-underline-offset:4px;cursor:pointer;padding:6px 0}
+.back[disabled]{visibility:hidden}
+
+/* ---------- результат ---------- */
+.chip{display:inline-block;max-width:100%;font:800 clamp(22px,3vw,34px)/1.1 var(--display);padding:.35em .5em;border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);margin-bottom:22px}
+.level{font-weight:800;margin-bottom:8px}
+.desc{max-width:32em;margin-bottom:24px}
+.axes{display:grid;gap:18px;margin-bottom:26px}
+.axis-head{display:flex;justify-content:space-between;font-weight:800;margin-bottom:6px}
+.axis-head b{font-variant-numeric:tabular-nums}
+.track{position:relative;height:18px;margin:0 9px}
+.track::before{content:'';position:absolute;left:-9px;right:-9px;top:7px;height:4px;background:var(--ink)}
+.track i{position:absolute;top:0;width:18px;height:18px;background:var(--yellow);border:3px solid var(--ink);transform:translateX(-50%)}
+.ends{display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--muted);margin-top:4px}
+.axis p{font-size:15px;margin-top:6px;max-width:34em}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.fine{font-size:13px;color:var(--muted);max-width:34em}
+
+/* ---------- телефон ---------- */
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr);gap:18px;align-items:start;padding:0 16px 32px}
+  .compass-wrap{
+    order:-1;top:0;z-index:10;background:var(--bg);
+    margin:0 -16px;padding:12px 16px 10px;border-bottom:3px solid var(--ink);
+    display:grid;grid-template-columns:min(42vw,190px) minmax(0,1fr);gap:14px;align-items:center;
+  }
+  .readout{grid-template-columns:1fr;margin-top:0;gap:8px}
+  .ro{padding:6px 10px}
+  .qlabel,.axlabel{display:none}
+  .question{min-height:5em}
+  .answer{padding:12px 14px;font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .halo{animation:none}
+  .question.swap{animation:none}
+  .q,.qlabel,.bar i{transition:none}
+}
+</style>
+</head>
+<body>
+<noscript><p style="padding:24px;font:18px sans-serif">Для теста нужен включённый JavaScript.</p></noscript>
+
+<main class="app">
+  <div class="panel">
+
+    <section class="screen active" id="s-intro">
+      <h1>Куда тебя несёт?</h1>
+      <p class="lead">Политический компас на 30 вопросов. На компасе точка стартует в центре и сдвигается после каждого твоего ответа.</p>
+      <p class="note">Отвечай как думаешь, а не как удобно. Всё считается прямо в браузере, ничего никуда не отправляется.</p>
+      <button class="cta" id="start" type="button">Начать</button>
+    </section>
+
+    <section class="screen" id="s-quiz">
+      <div class="progress">
+        <div class="bar"><i id="bar"></i></div>
+        <span id="count">1 / 30</span>
+      </div>
+      <h2 class="question" id="qtext" aria-live="polite"></h2>
+      <div class="answers" id="answers"></div>
+      <button class="back" id="back" type="button">Назад</button>
+    </section>
+
+    <section class="screen" id="s-result">
+      <h2 class="chip" id="r-title"></h2>
+      <p class="level" id="r-level"></p>
+      <p class="desc" id="r-desc"></p>
+      <div class="axes" id="r-axes"></div>
+      <div class="actions">
+        <button class="cta" id="again" type="button">Пройти заново</button>
+        <button class="ghost" id="copy" type="button">Скопировать результат</button>
+      </div>
+      <p class="fine">Это тест для прикола: 30 вопросов не заменят ни науку, ни собственную голову.</p>
+    </section>
+
+  </div>
+
+  <aside class="compass-wrap">
+    <svg id="compass" viewBox="0 0 440 440" role="img" aria-label="Политический компас: твоя точка на карте из четырёх квадратов">
+      <rect class="q q-tl" x="44"  y="44"  width="176" height="176" fill="var(--red)"/>
+      <rect class="q q-tr" x="220" y="44"  width="176" height="176" fill="var(--blue)"/>
+      <rect class="q q-bl" x="44"  y="220" width="176" height="176" fill="var(--green)"/>
+      <rect class="q q-br" x="220" y="220" width="176" height="176" fill="var(--yellow)"/>
+      <g id="grid"></g>
+      <line class="axis-line" x1="44" y1="220" x2="396" y2="220"/>
+      <line class="axis-line" x1="220" y1="44" x2="220" y2="396"/>
+      <rect class="frame" x="44" y="44" width="352" height="352"/>
+
+      <text class="qlabel ql-tl" x="54"  y="66"  text-anchor="start">Авторитарные левые</text>
+      <text class="qlabel ql-tr" x="386" y="66"  text-anchor="end">Авторитарные правые</text>
+      <text class="qlabel ql-bl" x="54"  y="384" text-anchor="start">Либертарные левые</text>
+      <text class="qlabel ql-br" x="386" y="384" text-anchor="end">Либертарные правые</text>
+
+      <text class="axlabel" x="220" y="28" text-anchor="middle">Авторитарно</text>
+      <text class="axlabel" x="220" y="428" text-anchor="middle">Либертарно</text>
+      <text class="axlabel" transform="translate(26 220) rotate(-90)" text-anchor="middle">Лево</text>
+      <text class="axlabel" transform="translate(414 220) rotate(90)" text-anchor="middle">Право</text>
+
+      <g id="steps"></g>
+      <polyline id="trail" points=""/>
+      <g id="dot" transform="translate(220 220)">
+        <circle class="halo" r="14"/>
+        <circle class="ping" id="ping" r="9"/>
+        <circle class="core" r="9"/>
+      </g>
+    </svg>
+
+    <div class="readout">
+      <div class="ro"><span>Экономика</span><b id="rx">0.0</b><em id="rxh">центр</em></div>
+      <div class="ro"><span>Общество</span><b id="ry">0.0</b><em id="ryh">центр</em></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= ВОПРОСЫ =================
+   t — текст вопроса
+   d — куда сдвигает согласие с вопросом:
+       экономика: +1 = вправо (рынок), -1 = влево (государство)
+       общество:  +1 = вверх (авторитарно), -1 = вниз (либертарно)
+   На каждой оси согласие тянет в обе стороны поровну (экономика 8 на 8,
+   общество 7 на 7), поэтому «согласен со всем» оставляет точку в центре. */
+const ECO = [
+  {d: 1, t: 'Частный бизнес обычно управляет компаниями эффективнее государства.'},
+  {d:-1, t: 'Энергетика, транспорт и связь — ключевые отрасли, и они должны принадлежать государству.'},
+  {d:-1, t: 'Медицина и образование должны быть бесплатными для всех за счёт государства.'},
+  {d: 1, t: 'Цены и зарплаты лучше всего устанавливает свободный рынок, а не государство.'},
+  {d:-1, t: 'Государство должно гарантировать каждому достойный минимальный доход.'},
+  {d: 1, t: 'Высокие налоги на крупный бизнес вредят экономике сильнее, чем помогают.'},
+  {d:-1, t: 'Богатые должны платить значительно более высокие налоги, чем остальные.'},
+  {d: 1, t: 'Человек должен сам копить себе на пенсию, а не рассчитывать на государство.'},
+  {d:-1, t: 'Профсоюзы нужны, чтобы работники могли отстоять свои права перед работодателем.'},
+  {d:-1, t: 'Государство должно устанавливать достаточно высокий минимум оплаты труда, даже если бизнесу это невыгодно.'},
+  {d: 1, t: 'Государственные субсидии отдельным отраслям и компаниям — пустая трата денег.'},
+  {d: 1, t: 'Неравенство доходов — нормальный результат разных способностей и усилий, бороться с ним не нужно.'},
+  {d:-1, t: 'Крупные корпорации слишком влиятельны, и государство должно жёстко их регулировать.'},
+  {d: 1, t: 'Пошлины и ограничения на импорт обычно вредят экономике, а не защищают её.'},
+  {d:-1, t: 'Жильё и коммунальные услуги слишком важны, чтобы отдавать их целиком на откуп рынку.'},
+  {d: 1, t: 'Наследство не должно облагаться налогом: это личное дело семьи.'}
+];
+const SOC = [
+  {d:-1, t: 'Взрослый человек сам вправе решать, как ему жить, пока он не вредит другим.'},
+  {d: 1, t: 'Ради безопасности общества нормально жертвовать частью личной приватности.'},
+  {d: 1, t: 'Жёсткие наказания лучше всего сдерживают преступность.'},
+  {d:-1, t: 'Свобода слова должна защищать и те мнения, которые большинству кажутся отвратительными.'},
+  {d: 1, t: 'Стране нужен сильный лидер, который принимает решения, не оглядываясь на бесконечные согласования.'},
+  {d:-1, t: 'Власти не вправе следить за гражданами без решения суда.'},
+  {d:-1, t: 'Мирные митинги и протесты — нормальная часть общественной жизни, их не нужно запрещать.'},
+  {d: 1, t: 'Главное, чему нужно учить детей, — послушание и уважение к старшим.'},
+  {d: 1, t: 'Интересы нации и государства важнее интересов отдельного человека.'},
+  {d:-1, t: 'Государство не должно навязывать гражданам никакую религию или идеологию.'},
+  {d: 1, t: 'Государство вправе блокировать контент и ограничивать высказывания, которые считает опасными для общества.'},
+  {d:-1, t: 'Спорные вопросы лучше решать через референдумы и местное самоуправление, а не сверху.'},
+  {d: 1, t: 'Государство должно поддерживать традиционные ценности, а не нейтрально относиться ко всему.'},
+  {d:-1, t: 'Смертная казнь недопустима ни при каких обстоятельствах.'}
+];
+
+// вопросы идут вперемешку: экономика, общество, экономика, общество...
+const Q = [];
+for (let i = 0; i < Math.max(ECO.length, SOC.length); i++) {
+  if (ECO[i]) Q.push({t: ECO[i].t, a: 'x', d: ECO[i].d});
+  if (SOC[i]) Q.push({t: SOC[i].t, a: 'y', d: SOC[i].d});
+}
+
+const CHOICES = [
+  {v: 2,  l: 'Полностью согласен'},
+  {v: 1,  l: 'Скорее согласен'},
+  {v: 0,  l: 'Затрудняюсь ответить'},
+  {v: -1, l: 'Скорее не согласен'},
+  {v: -2, l: 'Полностью не согласен'}
+];
+
+const QUADS = {
+  tl: {name: 'Авторитарные левые',  bg: 'var(--red)',    fg: '#fff',
+       text: 'Сильное государство и в экономике, и в обществе: плановость, общая собственность, порядок и коллективные интересы. Ближе всего к государственному социализму.'},
+  tr: {name: 'Авторитарные правые', bg: 'var(--blue)',   fg: '#fff',
+       text: 'Рынок и частная собственность в экономике плюс твёрдый порядок, традиции и сильная власть в обществе. Ближе всего к консервативным и националистическим взглядам.'},
+  bl: {name: 'Либертарные левые',   bg: 'var(--green)',  fg: 'var(--ink)',
+       text: 'Свобода личности и равенство: широкие права и самовыражение при заметной роли общества в перераспределении. Ближе всего к социал-демократии и левому либертарианству.'},
+  br: {name: 'Либертарные правые',  bg: 'var(--yellow)', fg: 'var(--ink)',
+       text: 'Минимум государства и в кошельке, и в личной жизни: свободный рынок и широкие личные свободы. Ближе всего к либертарианству и классическому либерализму.'}
+};
+
+/* ================= ПАРАМЕТРЫ ================= */
+const N = Q.length;        // 30
+// сколько баллов по каждой оси дают край компаса (±10): 80% от максимума,
+// чтобы точка заметно двигалась, а до края можно было дойти без крайностей
+const SPAN = {
+  x: 1.6 * Q.filter(q => q.a === 'x').length,
+  y: 1.6 * Q.filter(q => q.a === 'y').length
+};
+const C = 220, U = 17.6;   // центр SVG и размер одного деления компаса в пикселях
+const px = x => C + x * U;
+const py = y => C - y * U;
+const clamp = v => Math.max(-10, Math.min(10, v));
+const fmt = v => Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+const hintX = v => v <= -0.5 ? 'лево' : v >= 0.5 ? 'право' : 'центр';
+const hintY = v => v >= 0.5 ? 'авторитарно' : v <= -0.5 ? 'либертарно' : 'центр';
+const quadOf = (x, y) => (Math.abs(x) < 0.05 || Math.abs(y) < 0.05) ? '' : (y > 0 ? 't' : 'b') + (x < 0 ? 'l' : 'r');
+
+const $ = id => document.getElementById(id);
+const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* ================= СОСТОЯНИЕ ================= */
+let answers = [];     // ответы по порядку: -2..2
+let path = [];        // позиции точки после 0, 1, 2... ответов (без текущей)
+let locked = false;
+let cur = {x: 0, y: 0};
+let from = cur, to = cur, t0 = 0, dur = 650, raf = 0, lastQ = '';
+
+function posAfter(n) {
+  let sx = 0, sy = 0;
+  for (let i = 0; i < n; i++) {
+    const c = answers[i] * Q[i].d;
+    if (Q[i].a === 'x') sx += c; else sy += c;
+  }
+  return {x: clamp(sx / SPAN.x * 10), y: clamp(sy / SPAN.y * 10)};
+}
+
+/* ================= КОМПАС ================= */
+(function buildGrid() {
+  let g = '';
+  for (let k = -8; k <= 8; k += 2) {
+    if (k === 0) continue;
+    const p = C + k * U;
+    g += `<line class="gridline" x1="${p}" y1="${C - 10 * U}" x2="${p}" y2="${C + 10 * U}"/>`;
+    g += `<line class="gridline" x1="${C - 10 * U}" y1="${p}" x2="${C + 10 * U}" y2="${p}"/>`;
+  }
+  $('grid').innerHTML = g;
+})();
+
+function draw() {
+  const X = px(cur.x), Y = py(cur.y);
+  $('dot').setAttribute('transform', `translate(${X.toFixed(2)} ${Y.toFixed(2)})`);
+  const pts = path.map(p => px(p.x).toFixed(1) + ',' + py(p.y).toFixed(1));
+  pts.push(X.toFixed(1) + ',' + Y.toFixed(1));
+  $('trail').setAttribute('points', pts.join(' '));
+
+  $('rx').textContent = fmt(cur.x);  $('rxh').textContent = hintX(cur.x);
+  $('ry').textContent = fmt(cur.y);  $('ryh').textContent = hintY(cur.y);
+
+  const qk = quadOf(cur.x, cur.y);
+  if (qk !== lastQ) {
+    lastQ = qk;
+    ['tl', 'tr', 'bl', 'br'].forEach(k => {
+      document.querySelector('.q-' + k).classList.toggle('on', k === qk);
+      document.querySelector('.ql-' + k).classList.toggle('on', k === qk);
+    });
+  }
+}
+
+function tick(now) {
+  const p = dur === 0 ? 1 : Math.min(1, (now - t0) / dur);
+  const e = 1 - Math.pow(1 - p, 3);
+  cur = {x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e};
+  draw();
+  if (p < 1) raf = requestAnimationFrame(tick);
+}
+
+function moveTo(target) {
+  from = {x: cur.x, y: cur.y};
+  to = target;
+  dur = reduce ? 0 : 650;
+  t0 = performance.now();
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(tick);
+}
+
+function commit(ping) {
+  path = [];
+  for (let k = 0; k < answers.length; k++) path.push(posAfter(k));
+  $('steps').innerHTML = path
+    .map(p => `<circle class="step" cx="${px(p.x).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="2.6"/>`)
+    .join('');
+  moveTo(posAfter(answers.length));
+  if (ping && !reduce) {
+    const el = $('ping');
+    el.classList.remove('go');
+    void el.getBoundingClientRect();
+    el.classList.add('go');
+  }
+}
+
+/* ================= ЭКРАНЫ ================= */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function renderQuestion() {
+  const i = answers.length;
+  const qt = $('qtext');
+  qt.textContent = Q[i].t;
+  $('count').textContent = (i + 1) + ' / ' + N;
+  $('bar').style.width = (i / N * 100) + '%';
+  $('back').disabled = i === 0;
+  qt.classList.remove('swap');
+  void qt.offsetWidth;
+  qt.classList.add('swap');
+}
+
+function answer(v) {
+  if (locked || answers.length >= N) return;
+  answers.push(v);
+  commit(true);
+  if (answers.length === N) {
+    locked = true;
+    $('bar').style.width = '100%';
+    setTimeout(showResult, reduce ? 200 : 1100);
+  } else {
+    renderQuestion();
+  }
+}
+
+function back() {
+  if (locked || answers.length === 0) return;
+  answers.pop();
+  commit(false);
+  renderQuestion();
+}
+
+function restart() {
+  answers = [];
+  locked = false;
+  commit(false);
+  showScreen('s-intro');
+}
+
+function start() {
+  showScreen('s-quiz');
+  renderQuestion();
+}
+
+/* ================= РЕЗУЛЬТАТ ================= */
+let shareText = '';
+
+function showResult() {
+  const p = posAfter(N);
+  const dist = Math.hypot(p.x, p.y);
+  const center = dist < 2.5;
+  const qk = (p.y >= 0 ? 't' : 'b') + (p.x < 0 ? 'l' : 'r');
+  const quad = QUADS[qk];
+
+  const title = $('r-title');
+  if (center) {
+    title.textContent = 'Почти ровно по центру';
+    title.style.background = 'var(--paper)';
+    title.style.color = 'var(--ink)';
+    $('r-level').textContent = 'Ни в одну сторону тебя сильно не тянет.';
+    $('r-desc').textContent = 'Ответы на разные вопросы уравновесили друг друга. Это может значить, что взгляды умеренные, а может — что они сильно зависят от темы.';
+  } else {
+    title.textContent = quad.name;
+    title.style.background = quad.bg;
+    title.style.color = quad.fg;
+    const word = dist < 5 ? 'слегка' : dist < 8 ? 'умеренно' : 'сильно';
+    $('r-level').textContent = 'Тебя тянет в эту сторону ' + word + '.';
+    $('r-desc').textContent = quad.text;
+  }
+
+  const ecoText = p.x <= -1
+    ? 'Ты тянешься влево: больше доверяешь государству, перераспределению и общественным гарантиям.'
+    : p.x >= 1
+      ? 'Ты тянешься вправо: больше доверяешь рынку, частной собственности и конкуренции.'
+      : 'Ты примерно посередине между рынком и государством.';
+  const socText = p.y >= 1
+    ? 'Ты ближе к авторитарной стороне: порядок, традиции и сильное государство для тебя весомее личных свобод.'
+    : p.y <= -1
+      ? 'Ты ближе к либертарной стороне: личные свободы и ограничение власти для тебя весомее порядка и традиций.'
+      : 'Ты примерно посередине между свободой личности и порядком.';
+
+  const axis = (name, val, l, r, text) =>
+    `<div class="axis">
+       <div class="axis-head"><span>${name}</span><b>${fmt(val)}</b></div>
+       <div class="track"><i style="left:${((val + 10) / 20 * 100).toFixed(1)}%"></i></div>
+       <div class="ends"><span>${l}</span><span>${r}</span></div>
+       <p>${text}</p>
+     </div>`;
+  $('r-axes').innerHTML =
+    axis('Экономика', p.x, 'Лево', 'Право', ecoText) +
+    axis('Общество', p.y, 'Либертарно', 'Авторитарно', socText);
+
+  const where = center ? 'почти по центру' : quad.name.toLowerCase();
+  shareText = `Мой политический компас: экономика ${fmt(p.x)}, общество ${fmt(p.y)} (${where}).`;
+  if (/^https?:/.test(location.protocol)) shareText += ' Пройди тест: ' + location.href.split('#')[0];
+
+  showScreen('s-result');
+  window.scrollTo(0, 0);
+}
+
+async function copyResult() {
+  const btn = $('copy');
+  const done = () => {
+    btn.textContent = 'Скопировано';
+    setTimeout(() => { btn.textContent = 'Скопировать результат'; }, 1800);
+  };
+  try {
+    await navigator.clipboard.writeText(shareText);
+    done();
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = shareText;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e2) { /* ничего не поделать */ }
+    document.body.removeChild(ta);
+  }
+}
+
+/* ================= ЗАПУСК ================= */
+CHOICES.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'answer';
+  b.innerHTML = `<span>${c.l}</span><kbd>${i + 1}</kbd>`;
+  b.addEventListener('click', () => answer(c.v));
+  $('answers').appendChild(b);
+});
+
+$('start').addEventListener('click', start);
+$('back').addEventListener('click', back);
+$('again').addEventListener('click', restart);
+$('copy').addEventListener('click', copyResult);
+
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!$('s-quiz').classList.contains('active')) return;
+  if (e.key >= '1' && e.key <= '5') {
+    answer(CHOICES[+e.key - 1].v);
+  } else if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    back();
+  }
+});
+
+commit(false);
+})();
+</script>
+</body>
+</html>
